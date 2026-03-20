@@ -23,7 +23,7 @@ const Index = () => {
         setResults(null);
       } else {
         setResults(parsed);
-        toast.success(`Extracted ${parsed.students.length} student records`);
+        toast.success(`Extracted ${parsed.students.length} students across ${parsed.semesters.length} semesters`);
       }
     } catch (err) {
       console.error(err);
@@ -47,14 +47,18 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border/50 bg-card/60 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
               <GraduationCap className="w-5 h-5 text-primary" />
             </div>
-            <h1 className="font-bold text-lg text-foreground tracking-tight">Arrears Analyzer</h1>
+            <div>
+              <h1 className="font-bold text-lg text-foreground tracking-tight leading-none">Arrears Analyzer</h1>
+              {results && (
+                <p className="text-[11px] text-muted-foreground mt-0.5">{results.institution}</p>
+              )}
+            </div>
           </div>
           {results && (
             <button
@@ -68,8 +72,7 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-        {/* Upload Section */}
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
         {!results && (
           <div className="max-w-xl mx-auto pt-12">
             <div className="text-center mb-8 animate-fade-up">
@@ -77,7 +80,7 @@ const Index = () => {
                 Analyze Student Arrears
               </h2>
               <p className="text-muted-foreground mt-3 text-balance">
-                Upload a student results PDF to extract marks, calculate arrears, and download a detailed Excel report.
+                Upload an Anna University results PDF to extract semester-wise grades, calculate arrears, and download a detailed Excel report.
               </p>
             </div>
             <FileUploadZone
@@ -95,13 +98,14 @@ const Index = () => {
           </div>
         )}
 
-        {/* Results */}
         {results && (
           <>
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-foreground tracking-tight">Analysis Results</h2>
-                <p className="text-sm text-muted-foreground mt-0.5">{file?.name}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {results.branch} · {results.examination}
+                </p>
               </div>
               <button
                 onClick={handleClear}
