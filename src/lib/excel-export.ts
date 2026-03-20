@@ -1,70 +1,96 @@
 import * as XLSX from "xlsx";
 import type { ParsedResults } from "./pdf-parser";
 
-export function exportToExcel(data: ParsedResults, fileName = "student_arrears_report.xlsx") {
+export function exportToExcel(data: ParsedResults, fileName = "arrears_analysis_report.xlsx") {
   const wb = XLSX.utils.book_new();
 
-  // Sheet 1: Detailed Results
-  const detailHeaders = ["S.No", "Roll No", "Student Name", ...data.subjectNames, "Total Marks", "Arrear Count", "Status"];
-  const detailData = data.students.map((s, i) => {
-    const subjectMarks = data.subjectNames.map(subName => {
-      const sub = s.subjects.find(x => x.name === subName);
-      return sub ? sub.marks : "-";
+  // Sheet 1: Semester-wise Detailed Results
+  for (const sem of data.semesters) {
+    const codes = data.semesterSubjects[sem] || [];
+    const headers = ["S.No", "Reg. Number", "Student Name", ...codes, "Arrears"];
+    const rows: any[][] = [];
+
+    const semStudents = data.students.filter(s => s.semesters.some(ss => ss.semester === sem));
+    semStudents.forEach((s, i) => {
+      const semData = s.semesters.find(ss => ss.semester === sem);
+      const grades = codes.map(code => {
+        const subj = semData?.subjects.find(x => x.code === code);
+        return subj ? subj.grade : "";
+      });
+      const arrears = semData?.subjects.filter(x => x.status === "Arrear").length || 0;
+      rows.push([i + 1, s.regNo, s.name, ...grades, arrears]);
     });
-    return [
-      i + 1,
-      s.rollNo,
-      s.name,
-      ...subjectMarks,
-      s.totalMarks,
-      s.arrearCount,
-      s.arrearCount > 0 ? "Has Arrears" : "All Clear",
-    ];
-  });
 
-  const ws1 = XLSX.utils.aoa_to_sheet([detailHeaders, ...detailData]);
-  
-  // Set column widths
-  ws1["!cols"] = detailHeaders.map((h) => ({ wch: Math.max(h.length + 2, 14) }));
-  XLSX.utils.book_append_sheet(wb, ws1, "Detailed Results");
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    ws["!cols"] = headers.map(h => ({ wch: Math.max(String(h).length + 2, 12) }));
+    XLSX.utils.book_append_sheet(wb, ws, `Sem ${sem}`);
+  }
 
-  // Sheet 2: Arrears Summary
-  const summaryHeaders = ["S.No", "Roll No", "Student Name", "Arrear Count", "Arrear Subjects"];
-  const arrearsStudents = data.students.filter(s => s.arrearCount > 0);
-  const summaryData = arrearsStudents.map((s, i) => [
+  // Sheet: Arrears Summary
+  const summaryHeaders = ["S.No", "Reg. Number", "Student Name", "Total Arrears", "Arrear Subjects (Code - Semester)"];
+  const arrearsStudents = data.students.filter(s => s.totalArrears > 0);
+  const summaryRows = arrearsStudents.map((s, i) => [
     i + 1,
-    s.rollNo,
+    s.regNo,
     s.name,
-    s.arrearCount,
-    s.subjects.filter(x => x.status !== "Pass").map(x => x.name).join(", "),
+    s.totalArrears,
+    s.arrearSubjects.map(a => `${a.code} (Sem ${a.semester})`).join(", "),
   ]);
-
-  const ws2 = XLSX.utils.aoa_to_sheet([summaryHeaders, ...summaryData]);
-  ws2["!cols"] = summaryHeaders.map((h) => ({ wch: Math.max(h.length + 2, 18) }));
+  const ws2 = XLSX.utils.aoa_to_sheet([summaryHeaders, ...summaryRows]);
+  ws2["!cols"] = [{ wch: 6 }, { wch: 16 }, { wch: 22 }, { wch: 14 }, { wch: 50 }];
   XLSX.utils.book_append_sheet(wb, ws2, "Arrears Summary");
 
-  // Sheet 3: Class Statistics
-  const statsData = [
-    ["Class Arrears Report"],
+  // Sheet: Cumulative History
+  const histHeaders = ["S.No", "Reg. Number", "Student Name", ...data.semesters.map(s => `Sem ${s} Arrears`), "Total Arrears", "Status"];
+  const histRows = data.students.map((s, i) => {
+    const semArrears = data.semesters.map(sem => {
+      const semData = s.semesters.find(ss => ss.semester === sem);
+      return semData?.subjects.filter(x => x.status === "Arrear").length || 0;
+    });
+    return [
+      i + 1, s.regNo, s.name, ...semArrears, s.totalArrears,
+      s.totalArrears > 0 ? "Has Arrears" : "All Clear",
+    ];
+  });
+  const ws3 = XLSX.utils.aoa_to_sheet([histHeaders, ...histRows]);
+  ws3["!cols"] = histHeaders.map(h => ({ wch: Math.max(String(h).length + 2, 14) }));
+  XLSX.utils.book_append_sheet(wb, ws3, "Cumulative History");
+
+  // Sheet: Statistics
+  const clearCount = data.students.length - arrearsStudents.length;
+  const statsData: any[][] = [
+    ["Class Arrears Analysis Report"],
+    [],
+    ["Institution", data.institution],
+    ["Branch", data.branch],
+    ["Examination", data.examination],
     [],
     ["Total Students", data.students.length],
     ["Students with Arrears", arrearsStudents.length],
-    ["Students All Clear", data.students.length - arrearsStudents.length],
+    ["Students All Clear", clearCount],
     ["Total Class Arrears", data.totalClassArrears],
-    ["Pass Percentage", `${((data.students.length - arrearsStudents.length) / Math.max(data.students.length, 1) * 100).toFixed(1)}%`],
+    ["Pass Percentage", `${(clearCount / Math.max(data.students.length, 1) * 100).toFixed(1)}%`],
     [],
-    ["Subject-wise Arrears"],
-    ["Subject", "Fail Count", "Pass Count", "Pass %"],
-    ...data.subjectNames.map(subName => {
-      const failCount = data.students.filter(s => s.subjects.find(x => x.name === subName)?.status !== "Pass").length;
-      const passCount = data.students.length - failCount;
-      return [subName, failCount, passCount, `${(passCount / Math.max(data.students.length, 1) * 100).toFixed(1)}%`];
-    }),
+    ["Semester-wise Arrear Count"],
+    ["Semester", "Subject Code", "Arrear Count", "Pass %"],
   ];
 
-  const ws3 = XLSX.utils.aoa_to_sheet(statsData);
-  ws3["!cols"] = [{ wch: 24 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
-  XLSX.utils.book_append_sheet(wb, ws3, "Statistics");
+  for (const sem of data.semesters) {
+    const codes = data.semesterSubjects[sem] || [];
+    for (const code of codes) {
+      const failCount = data.students.filter(s => {
+        const semData = s.semesters.find(ss => ss.semester === sem);
+        return semData?.subjects.find(x => x.code === code)?.status === "Arrear";
+      }).length;
+      const total = data.students.filter(s => s.semesters.some(ss => ss.semester === sem && ss.subjects.some(x => x.code === code))).length;
+      const passCount = total - failCount;
+      statsData.push([`Sem ${sem}`, code, failCount, total > 0 ? `${(passCount / total * 100).toFixed(1)}%` : "N/A"]);
+    }
+  }
+
+  const ws4 = XLSX.utils.aoa_to_sheet(statsData);
+  ws4["!cols"] = [{ wch: 24 }, { wch: 18 }, { wch: 14 }, { wch: 14 }];
+  XLSX.utils.book_append_sheet(wb, ws4, "Statistics");
 
   XLSX.writeFile(wb, fileName);
 }
