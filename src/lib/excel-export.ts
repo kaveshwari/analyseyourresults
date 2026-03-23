@@ -40,6 +40,22 @@ export function exportToExcel(data: ParsedResults, fileName = "arrears_analysis_
   ws2["!cols"] = [{ wch: 6 }, { wch: 16 }, { wch: 22 }, { wch: 14 }, { wch: 50 }];
   XLSX.utils.book_append_sheet(wb, ws2, "Arrears Summary");
 
+  // Sheet: GPA / CGPA (all-clear students only)
+  const clearStudents = data.students.filter(s => s.totalArrears === 0 && s.cgpa !== undefined);
+  const gpaHeaders = ["S.No", "Reg. Number", "Student Name", ...data.semesters.map(s => `Sem ${s} GPA`), "CGPA"];
+  const gpaRows = clearStudents
+    .sort((a, b) => (b.cgpa || 0) - (a.cgpa || 0))
+    .map((s, i) => {
+      const semGpas = data.semesters.map(sem => {
+        const semData = s.semesters.find(ss => ss.semester === sem);
+        return semData?.gpa ?? "";
+      });
+      return [i + 1, s.regNo, s.name, ...semGpas, s.cgpa ?? ""];
+    });
+  const wsGpa = XLSX.utils.aoa_to_sheet([gpaHeaders, ...gpaRows]);
+  wsGpa["!cols"] = gpaHeaders.map(h => ({ wch: Math.max(String(h).length + 2, 14) }));
+  XLSX.utils.book_append_sheet(wb, wsGpa, "GPA CGPA");
+
   // Sheet: Cumulative History
   const histHeaders = ["S.No", "Reg. Number", "Student Name", ...data.semesters.map(s => `Sem ${s} Arrears`), "Total Arrears", "Status"];
   const histRows = data.students.map((s, i) => {
