@@ -209,6 +209,9 @@ export function ResultsTable({ data }: ResultsTableProps) {
             <TabsTrigger value="cumulative" className="text-xs">
               Cumulative Arrears
             </TabsTrigger>
+            <TabsTrigger value="gpa-cgpa" className="text-xs">
+              GPA / CGPA
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -219,6 +222,9 @@ export function ResultsTable({ data }: ResultsTableProps) {
         ))}
         <TabsContent value="cumulative" className="mt-0">
           <CumulativeTable data={data} />
+        </TabsContent>
+        <TabsContent value="gpa-cgpa" className="mt-0">
+          <GpaCgpaTable data={data} />
         </TabsContent>
       </Tabs>
     </div>
