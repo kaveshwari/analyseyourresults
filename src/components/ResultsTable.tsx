@@ -138,6 +138,61 @@ function CumulativeTable({ data }: { data: ParsedResults }) {
   );
 }
 
+function GpaCgpaTable({ data }: { data: ParsedResults }) {
+  const clearStudents = data.students
+    .filter(s => s.totalArrears === 0 && s.cgpa !== undefined)
+    .sort((a, b) => (b.cgpa || 0) - (a.cgpa || 0));
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-muted/50">
+            <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">#</th>
+            <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs whitespace-nowrap">Reg. Number</th>
+            <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs">Name</th>
+            {data.semesters.map(sem => (
+              <th key={sem} className="text-center px-3 py-2.5 font-medium text-muted-foreground text-xs whitespace-nowrap">Sem {sem} GPA</th>
+            ))}
+            <th className="text-center px-3 py-2.5 font-medium text-muted-foreground text-xs whitespace-nowrap">CGPA</th>
+          </tr>
+        </thead>
+        <tbody>
+          {clearStudents.map((student, i) => (
+            <tr key={student.regNo} className="border-t border-border/40 hover:bg-muted/30 transition-colors">
+              <td className="px-3 py-2.5 text-muted-foreground tabular-nums text-xs">{i + 1}</td>
+              <td className="px-3 py-2.5 font-medium text-foreground whitespace-nowrap text-xs tabular-nums">{student.regNo}</td>
+              <td className="px-3 py-2.5 text-foreground whitespace-nowrap text-xs">{student.name}</td>
+              {data.semesters.map(sem => {
+                const semData = student.semesters.find(s => s.semester === sem);
+                return (
+                  <td key={sem} className="px-3 py-2.5 text-center">
+                    {semData?.gpa ? (
+                      <span className="inline-flex items-center justify-center min-w-[2.25rem] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-semibold tabular-nums">
+                        {semData.gpa.toFixed(2)}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground/40 text-xs">—</span>
+                    )}
+                  </td>
+                );
+              })}
+              <td className="px-3 py-2.5 text-center">
+                <span className="inline-flex items-center justify-center min-w-[2.5rem] px-2 py-0.5 rounded-md bg-success/12 text-success text-xs font-bold tabular-nums">
+                  {student.cgpa?.toFixed(2) || "—"}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {clearStudents.length === 0 && (
+        <p className="p-6 text-center text-muted-foreground text-sm">No all-clear students found.</p>
+      )}
+    </div>
+  );
+}
+
 export function ResultsTable({ data }: ResultsTableProps) {
   const [activeTab, setActiveTab] = useState(data.semesters.length > 0 ? `sem-${data.semesters[0]}` : "cumulative");
 
