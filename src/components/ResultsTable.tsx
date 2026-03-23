@@ -139,9 +139,26 @@ function CumulativeTable({ data }: { data: ParsedResults }) {
 }
 
 function GpaCgpaTable({ data }: { data: ParsedResults }) {
-  const clearStudents = data.students
-    .filter(s => s.totalArrears === 0 && s.cgpa !== undefined)
-    .sort((a, b) => (b.cgpa || 0) - (a.cgpa || 0));
+  // Show all students with semester GPA; CGPA only for all-clear
+  const allStudents = [...data.students].sort((a, b) => {
+    // All-clear first sorted by CGPA desc, then others by regNo
+    if (a.totalArrears === 0 && b.totalArrears === 0) return (b.cgpa || 0) - (a.cgpa || 0);
+    if (a.totalArrears === 0) return -1;
+    if (b.totalArrears === 0) return 1;
+    return a.regNo.localeCompare(b.regNo);
+  });
+
+  // Compute semester GPA for every student (even with arrears)
+  function getSemGpa(student: typeof data.students[0], sem: number) {
+    const semData = student.semesters.find(s => s.semester === sem);
+    if (!semData || semData.subjects.length === 0) return null;
+    let total = 0, count = 0;
+    for (const subj of semData.subjects) {
+      const gp = ({ "O": 10, "A+": 9, "A": 8, "B+": 7, "B": 6, "C+": 5, "C": 4 } as Record<string, number>)[subj.grade.trim().toUpperCase()];
+      if (gp !== undefined) { total += gp; count++; }
+    }
+    return count > 0 ? parseFloat((total / count).toFixed(2)) : null;
+  }
 
   return (
     <div className="overflow-x-auto">
@@ -158,18 +175,18 @@ function GpaCgpaTable({ data }: { data: ParsedResults }) {
           </tr>
         </thead>
         <tbody>
-          {clearStudents.map((student, i) => (
+          {allStudents.map((student, i) => (
             <tr key={student.regNo} className="border-t border-border/40 hover:bg-muted/30 transition-colors">
               <td className="px-3 py-2.5 text-muted-foreground tabular-nums text-xs">{i + 1}</td>
               <td className="px-3 py-2.5 font-medium text-foreground whitespace-nowrap text-xs tabular-nums">{student.regNo}</td>
               <td className="px-3 py-2.5 text-foreground whitespace-nowrap text-xs">{student.name}</td>
               {data.semesters.map(sem => {
-                const semData = student.semesters.find(s => s.semester === sem);
+                const gpa = getSemGpa(student, sem);
                 return (
                   <td key={sem} className="px-3 py-2.5 text-center">
-                    {semData?.gpa ? (
+                    {gpa !== null ? (
                       <span className="inline-flex items-center justify-center min-w-[2.25rem] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-semibold tabular-nums">
-                        {semData.gpa.toFixed(2)}
+                        {gpa.toFixed(2)}
                       </span>
                     ) : (
                       <span className="text-muted-foreground/40 text-xs">—</span>
@@ -178,16 +195,20 @@ function GpaCgpaTable({ data }: { data: ParsedResults }) {
                 );
               })}
               <td className="px-3 py-2.5 text-center">
-                <span className="inline-flex items-center justify-center min-w-[2.5rem] px-2 py-0.5 rounded-md bg-success/12 text-success text-xs font-bold tabular-nums">
-                  {student.cgpa?.toFixed(2) || "—"}
-                </span>
+                {student.totalArrears === 0 && student.cgpa ? (
+                  <span className="inline-flex items-center justify-center min-w-[2.5rem] px-2 py-0.5 rounded-md bg-success/12 text-success text-xs font-bold tabular-nums">
+                    {student.cgpa.toFixed(2)}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground/40 text-xs">—</span>
+                )}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {clearStudents.length === 0 && (
-        <p className="p-6 text-center text-muted-foreground text-sm">No all-clear students found.</p>
+      {allStudents.length === 0 && (
+        <p className="p-6 text-center text-muted-foreground text-sm">No student data found.</p>
       )}
     </div>
   );
