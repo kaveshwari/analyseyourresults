@@ -12,6 +12,14 @@ const Index = () => {
   const [file, setFile] = useState<File | null>(null);
   const [results, setResults] = useState<ParsedResults | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { profile, role, signOut } = useAuth();
+
+  const roleLabels: Record<string, string> = {
+    student: "Student",
+    teacher: "Teacher",
+    hod: "HOD",
+    principal: "Principal",
+  };
 
   const handleFileSelect = useCallback(async (f: File) => {
     setFile(f);
