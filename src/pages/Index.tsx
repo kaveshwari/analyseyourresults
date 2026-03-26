@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import { Download, GraduationCap, Loader2 } from "lucide-react";
+import { Download, GraduationCap, Loader2, LogOut, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { FileUploadZone } from "@/components/FileUploadZone";
 import { StatsCards } from "@/components/StatsCards";
 import { ResultsTable } from "@/components/ResultsTable";
