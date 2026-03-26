@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import { Download, GraduationCap, Loader2 } from "lucide-react";
+import { Download, GraduationCap, Loader2, LogOut, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { FileUploadZone } from "@/components/FileUploadZone";
 import { StatsCards } from "@/components/StatsCards";
 import { ResultsTable } from "@/components/ResultsTable";
@@ -11,6 +12,14 @@ const Index = () => {
   const [file, setFile] = useState<File | null>(null);
   const [results, setResults] = useState<ParsedResults | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { profile, role, signOut } = useAuth();
+
+  const roleLabels: Record<string, string> = {
+    student: "Student",
+    teacher: "Teacher",
+    hod: "HOD",
+    principal: "Principal",
+  };
 
   const handleFileSelect = useCallback(async (f: File) => {
     setFile(f);
@@ -60,15 +69,33 @@ const Index = () => {
               )}
             </div>
           </div>
-          {results && (
+          <div className="flex items-center gap-3">
+            {results && (
+              <button
+                onClick={handleDownload}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors active:scale-[0.97]"
+              >
+                <Download className="w-4 h-4" />
+                Download Excel
+              </button>
+            )}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary text-secondary-foreground text-sm">
+              <User className="w-3.5 h-3.5" />
+              <span className="font-medium">{profile?.full_name}</span>
+              {role && (
+                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-medium">
+                  {roleLabels[role] || role}
+                </span>
+              )}
+            </div>
             <button
-              onClick={handleDownload}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors active:scale-[0.97]"
+              onClick={signOut}
+              className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              title="Sign out"
             >
-              <Download className="w-4 h-4" />
-              Download Excel
+              <LogOut className="w-4 h-4" />
             </button>
-          )}
+          </div>
         </div>
       </header>
 
